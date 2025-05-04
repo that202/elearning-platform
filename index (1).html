@@ -1,0 +1,235 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Learning Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <header class="bg-blue-600 text-white py-4">
+        <div class="container mx-auto px-4">
+            <h1 class="text-2xl font-bold">E-Learning Platform</h1>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <section id="grades" class="mb-8">
+            <h2 class="text-xl font-semibold mb-4">Select a Grade</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+                <button onclick="showSubjects(1)" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700">Grade 1</button>
+                <button onclick="showSubjects(2)" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700">Grade 2</button>
+                <button onclick="showSubjects(3)" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700">Grade 3</button>
+                <button onclick="showSubjects(4)" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700">Grade 4</button>
+                <button onclick="showSubjects(5)" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700">Grade 5</button>
+                <button onclick="showSubjects(6)" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700">Grade 6</button>
+            </div>
+        </section>
+
+        <section id="subjects" class="hidden mb-8">
+            <h2 class="text-xl font-semibold mb-4">Select a Subject (Grade <span id="grade-number"></span>)</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                <button onclick="showUnits('Math')" class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-700">Math</button>
+                <button onclick="showUnits('Khmer')" class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-700">Khmer</button>
+                <button onclick="showUnits('Social Science')" class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-700">Social Science</button>
+                <button onclick="showUnits('English')" class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-700">English</button>
+                <button onclick="showUnits('Computer')" class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-700">Computer</button>
+            </div>
+            <button onclick="backToGrades()" class="mt-4 text-blue-600 hover:underline">Back to Grades</button>
+        </section>
+
+        <section id="units" class="hidden mb-8">
+            <h2 class="text-xl font-semibold mb-4">Units for <span id="subject-name"></span> (Grade <span id="grade-number-units"></span>)</h2>
+            <div id="unit-list" class="space-y-4">
+                <!-- Units will be populated dynamically -->
+            </div>
+            <button onclick="backToSubjects()" class="mt-4 text-blue-600 hover:underline">Back to Subjects</button>
+        </section>
+
+        <section id="unit-content" class="hidden mb-8">
+            <h2 class="text-xl font-semibold mb-4">Unit <span id="unit-number"></span>: <span id="unit-subject"></span> (Grade <span id="grade-number-content"></span>)</h2>
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-medium mb-2">Video</h3>
+                    <div id="video-content" class="aspect-w-16 aspect-h-9">
+                        <!-- Video iframe will be populated here -->
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium mb-2">Lesson</h3>
+                    <p id="lesson-content" class="bg-white p-4 rounded shadow">Lesson content placeholder.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium mb-2">Quiz</h3>
+                    <p id="quiz-content" class="bg-white p-4 rounded shadow">Quiz content placeholder.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium mb-2">Homework</h3>
+                    <p id="homework-content" class="bg-white p-4 rounded shadow">Homework content placeholder.</p>
+                </div>
+            </div>
+            <button onclick="backToUnits()" class="mt-4 text-blue-600 hover:underline">Back to Units</button>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-4">
+        <div class="container mx-auto px-4">
+            <p>© 2025 E-Learning Platform. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        let currentGrade = null;
+        let currentSubject = null;
+
+        // Sample data structure for units
+        const unitsData = {
+            Math: [
+                { 
+                    id: 1, 
+                    video: "https://www.youtube.com/embed/dQw4w9WgXcQ", 
+                    lesson: "Learn to count from 1 to 10 with examples.", 
+                    quiz: '<a href="https://forms.gle/example" target="_blank" class="text-blue-600 hover:underline">Number Quiz (Google Form)</a>', 
+                    homework: '<a href="https://drive.google.com/file/d/example/view" target="_blank" class="text-blue-600 hover:underline">Practice counting worksheet</a>' 
+                },
+                { 
+                    id: 2, 
+                    video: "https://www.youtube.com/embed/3t7e0lDVuAc", 
+                    lesson: "Understand basic addition with visual aids.", 
+                    quiz: '<a href="https://forms.gle/example" target="_blank" class="text-blue-600 hover:underline">Addition Quiz (Google Form)</a>', 
+                    homework: '<a href="https://drive.google.com/file/d/example/view" target="_blank" class="text-blue-600 hover:underline">Addition worksheet</a>' 
+                }
+            ],
+            Khmer: [
+                { 
+                    id: 1, 
+                    video: "https://www.youtube.com/embed/sample", 
+                    lesson: "Introduction to the Khmer alphabet and pronunciation.", 
+                    quiz: '<a href="https://forms.gle/example" target="_blank" class="text-blue-600 hover:underline">Alphabet Quiz (Google Form)</a>', 
+                    homework: '<a href="https://drive.google.com/file/d/example/view" target="_blank" class="text-blue-600 hover:underline">Write Khmer letters</a>' 
+                }
+            ],
+            'Social Science': [
+                { 
+                    id: 1, 
+                    video: "https://www.youtube.com/embed/sample", 
+                    lesson: "Learn about community helpers and their roles.", 
+                    quiz: '<a href="https://forms.gle/example" target="_blank" class="text-blue-600 hover:underline">Community Quiz (Google Form)</a>', 
+                    homework: '<a href="https://drive.google.com/file/d/example/view" target="_blank" class="text-blue-600 hover:underline">Draw a community helper</a>' 
+                }
+            ],
+            English: [
+                { 
+                    id: 1, 
+                    video: "https://www.youtube.com/embed/sample", 
+                    lesson: "Basic English vocabulary for everyday objects.", 
+                    quiz: '<a href="https://forms.gle/example" target="_blank" class="text-blue-600 hover:underline">Vocab Quiz (Google Form)</a>', 
+                    homework: '<a href="https://drive.google.com/file/d/example/view" target="_blank" class="text-blue-600 hover:underline">Write 5 vocabulary words</a>' 
+                }
+            ],
+            Computer: [
+                { 
+                    id: 1, 
+                    video: "https://www.youtube.com/embed/sample", 
+                    lesson: "Introduction to computer parts and their functions.", 
+                    quiz: '<a href="https://forms.gle/example" target="_blank" class="text-blue-600 hover:underline">Computer Quiz (Google Form)</a>', 
+                    homework: '<a href="https://drive.google.com/file/d/example/view" target="_blank" class="text-blue-600 hover:underline">List computer parts</a>' 
+                }
+            ]
+        };
+
+        function showSubjects(grade) {
+            currentGrade = grade;
+            document.getElementById('grades').classList.add('hidden');
+            document.getElementById('subjects').classList.remove('hidden');
+            document.getElementById('grade-number').textContent = grade;
+        }
+
+        function showUnits(subject) {
+            currentSubject = subject;
+            document.getElementById('subjects').classList.add('hidden');
+            document.getElementById('units').classList.remove('hidden');
+            document.getElementById('subject-name').textContent = subject;
+            document.getElementById('grade-number-units').textContent = currentGrade;
+
+            const unitList = document.getElementById('unit-list');
+            unitList.innerHTML = '';
+            const units = unitsData[subject] || [];
+            units.forEach(unit => {
+                const button = document.createElement('button');
+                button.className = 'bg-purple-500 text-white py-2 px-4 rounded hover:bg-purple-700 w-full text-left';
+                button.textContent = `Unit ${unit.id}`;
+                button.onclick = () => showUnitContent(unit);
+                unitList.appendChild(button);
+            });
+        }
+
+        function showUnitContent(unit) {
+            document.getElementById('units').classList.add('hidden');
+            document.getElementById('unit-content').classList.remove('hidden');
+            document.getElementById('unit-number').textContent = unit.id;
+            document.getElementById('unit-subject').textContent = currentSubject;
+            document.getElementById('grade-number-content').textContent = currentGrade;
+
+            document.getElementById('video-content').innerHTML = `<iframe class="w-full h-64" src="${unit.video}" frameborder="0" allowfullscreen></iframe>`;
+            document.getElementById('lesson-content').textContent = unit.lesson;
+            document.getElementById('quiz-content').innerHTML = unit.quiz;
+            document.getElementById('homework-content').innerHTML = unit.homework;
+        }
+
+        function backToGrades() {
+            document.getElementById('subjects').classList.add('hidden');
+            document.getElementById('grades').classList.remove('hidden');
+        }
+
+        function backToSubjects() {
+            document.getElementById('units').classList.add('hidden');
+            document.getElementById('subjects').classList.remove('hidden');
+        }
+
+        function backToUnits() {
+            document.getElementById('unit-content').classList.add('hidden');
+            document.getElementById('units').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
